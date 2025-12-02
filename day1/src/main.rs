@@ -99,3 +99,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("The password is {}", password);
     Ok(())
 }
+
+fn main_cleaner() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        return Err("Missing input file argument".into());
+    }
+    let input_path = &args[1];
+
+    let file =
+        File::open(input_path).map_err(|e| format!("Failed to open file {}: {}", input_path, e))?;
+    let reader = BufReader::new(file);
+
+    let mut pos = 50i32;
+    let mut zero_finishes = 0;
+    let mut zero_crossings = 0;
+
+    for line in reader.lines() {
+        let line = line?;
+        let (dir, dist_str) = line.split_at(1);
+        let dist: i32 = dist_str.parse().unwrap();
+
+        // Update position & Part 2: count zero crossings
+        pos = match dir {
+            "R" => {
+                zero_crossings += (pos + dist) / 100 - pos / 100;
+                pos + dist
+            }
+            "L" => {
+                zero_crossings += (pos - 1).div_euclid(100) - (pos - dist - 1).div_euclid(100);
+                pos - dist
+            }
+            _ => panic!("Unexpected instruction."),
+        }
+        .rem_euclid(100);
+
+        // Part 1: count final positions at 0
+        if pos == 0 {
+            zero_finishes += 1;
+        }
+    }
+
+    println!("Part 1: {zero_finishes}");
+    println!("Part 2: {}", zero_finishes + zero_crossings);
+
+    Ok(())
+}
