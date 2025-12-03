@@ -1,8 +1,7 @@
 use clap::Parser;
 use std::cmp::PartialOrd;
-use std::error::Error;
 use std::{
-    fs::{self, File},
+    fs::File,
     io::{BufRead, BufReader},
 };
 
