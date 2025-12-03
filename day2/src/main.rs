@@ -1,3 +1,5 @@
+/// This is a brute force solution, it would be more elegant to generate the invalid ids in each
+/// range instead
 use clap::Parser;
 use std::fs;
 
