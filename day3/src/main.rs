@@ -1,3 +1,14 @@
+/// A key insight is that keeping a small integer before a greater one is never optimal
+///
+/// This implementation is a greedy algorithm and while it works its complexity is
+/// O(n * k) (where k is the power limit) because it needs to scan the array for each limit
+/// remaining
+///
+/// A better solution would be to build the solution as a monotonic stack
+/// calculate the amount of pops remaining as bank_sz - power_limit and then push elements from the
+/// back popping elements at the front if the element at the back is greater then they are and we
+/// still have removals left.
+///
 use clap::Parser;
 use std::cmp::PartialOrd;
 use std::{
@@ -30,6 +41,8 @@ fn max_idx_and_val_from_slice<T: PartialOrd + Clone>(arr: &[T]) -> Option<(usize
 /// battery_bank is the array of batteries
 /// power_limitter is the number of batteries that should be turned on
 /// returns the maximum power this array can give given the limitter
+///
+/// note: this is tail recursion and would be better written as a loop
 fn battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
     if power_limit == 0 {
         return String::new();
