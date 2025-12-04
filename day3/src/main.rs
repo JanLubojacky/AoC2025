@@ -63,28 +63,29 @@ fn greedy_battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
 //  - 3. while the current digit is larger than the last digit on the stack
 fn monotonic_stack_battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
     let mut optimal_bank: Vec<u64> = Vec::new();
-    let mut pops_remaining = battery_bank.len() as u64 - power_limit;
-    println!("");
-    println!("pops_remaining {pops_remaining}");
 
-    for &i in battery_bank {
-        println!("i {i}");
-        // if bank isn't empty check whether we can replace a smaller number
-        if pops_remaining > 0 {
-            if let Some(&last_entry) = optimal_bank.last() {
-                if i > last_entry {
-                    optimal_bank.pop();
+    for (idx, &val) in battery_bank.iter().enumerate() {
+        println!("{optimal_bank:?}");
+        let remains_to_fill = power_limit - optimal_bank.len() as u64;
+        let remaining_elements = battery_bank.len() - idx;
+        let mut pops_remaining = remaining_elements as u64 - remains_to_fill;
+        while pops_remaining != 0 {
+            if let Some(&last_element) = optimal_bank.last() {
+                if val > last_element {
                     pops_remaining -= 1;
-                    println!(
-                        "i {i} was bigger than last_entry {last_entry}, pops_remaining: {pops_remaining}"
-                    );
+                    optimal_bank.pop();
+                } else {
+                    break;
                 }
+            } else {
+                break;
             }
         }
 
+        // bank has space left we can push stuff inside
         if (optimal_bank.len() as u64) < power_limit {
-            optimal_bank.push(i);
-            println!("bank has space left, pushed {i}")
+            optimal_bank.push(val);
+            println!("bank has space left, pushed {val}")
         }
     }
 
