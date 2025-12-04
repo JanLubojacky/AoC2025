@@ -1,13 +1,10 @@
 /// A key insight is that keeping a small integer before a greater one is never optimal
 ///
-/// This implementation is a greedy algorithm and while it works its complexity is
+/// First implementation is a greedy algorithm and while it works its complexity is
 /// O(n * k) (where k is the power limit) because it needs to scan the array for each limit
 /// remaining
 ///
-/// A better solution would be to build the solution as a monotonic stack
-/// calculate the amount of pops remaining as bank_sz - power_limit and then push elements from the
-/// back popping elements at the front if the element at the back is greater then they are and we
-/// still have removals left.
+/// Second implementation uses a monotonic stack and runs in O(n)
 ///
 use clap::Parser;
 use std::cmp::PartialOrd;
@@ -57,42 +54,26 @@ fn greedy_battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
         + &greedy_battery_tuner(&battery_bank[max_idx + 1..], remaining_limit).to_string();
 }
 
-// this is wrong we should pop from optimal_bank
-//  - 1. while we have enough numbers left to reach power_limit digits
-//  - 2. while we have pops left
-//  - 3. while the current digit is larger than the last digit on the stack
 fn monotonic_stack_battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
-    let mut optimal_bank: Vec<u64> = Vec::new();
+    let mut stack: Vec<u64> = Vec::new();
 
     for (idx, &val) in battery_bank.iter().enumerate() {
-        println!("{optimal_bank:?}");
-        let remains_to_fill = power_limit - optimal_bank.len() as u64;
-        let remaining_elements = battery_bank.len() - idx;
-        let mut pops_remaining = remaining_elements as u64 - remains_to_fill;
-        while pops_remaining != 0 {
-            if let Some(&last_element) = optimal_bank.last() {
-                if val > last_element {
-                    pops_remaining -= 1;
-                    optimal_bank.pop();
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
+        let remains = battery_bank.len() - idx;
+        let need = power_limit as usize - stack.len();
+        let mut can_pop = remains.saturating_sub(need);
+
+        while can_pop > 0 && stack.last().is_some_and(|&last| last > val) {
+            can_pop -= 1;
+            stack.pop();
         }
 
         // bank has space left we can push stuff inside
-        if (optimal_bank.len() as u64) < power_limit {
-            optimal_bank.push(val);
-            println!("bank has space left, pushed {val}")
+        if (stack.len() as u64) < power_limit {
+            stack.push(val);
         }
     }
 
-    optimal_bank
-        .iter()
-        .map(|&num| num.to_string())
-        .collect::<String>()
+    stack.iter().map(|&num| num.to_string()).collect::<String>()
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -117,7 +98,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // let power: u64 = greedy_battery_tuner(&battery_bank, power_limit).parse()?;
         let power: u64 = monotonic_stack_battery_tuner(&battery_bank, power_limit).parse()?;
-        println!("power {power}");
         total_power += power;
     }
 
