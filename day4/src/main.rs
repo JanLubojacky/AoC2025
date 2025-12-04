@@ -1,8 +1,8 @@
 use clap::Parser;
-use std::cmp::PartialOrd;
+use std::collections::VecDeque;
 /// We need to build a graph from paper rolls, connecting them to each other
 /// afterwards it is simple to check how many neighbours a paper roll has
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::panic;
 use std::{
     fs::File,
@@ -84,40 +84,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // part 2 in each iteration remove rolls that have < 4 neighbours
     // repeat until no rolls can be removed (this seems naive)
 
-    // brute force grid rescanning
     let mut part2 = 0;
-    loop {
-        // First pass: collect nodes to remove
-        let to_remove: Vec<(usize, usize)> = adj_list
-            .iter()
-            .filter(|(_, v)| v.len() < 4)
-            .map(|(k, _)| *k)
-            .collect();
 
-        if to_remove.is_empty() {
-            break;
+    // First pass: collect nodes to remove
+    let mut to_visit: VecDeque<(usize, usize)> = adj_list
+        .iter()
+        .filter(|(_, v)| v.len() < 4)
+        .map(|(k, _)| *k)
+        .collect();
+
+    let mut removed: HashSet<(usize, usize)> = HashSet::new();
+    let mut in_queue: HashSet<(usize, usize)> = to_visit.iter().cloned().collect();
+
+    while let Some(node_to_visit) = to_visit.pop_front() {
+        if removed.contains(&node_to_visit) {
+            continue;
         }
+        in_queue.remove(&node_to_visit);
 
-        // Second pass: remove nodes and update neighbors
-        for k in to_remove {
-            part2 += 1;
-
-            // Get neighbors before removing the node
-            if let Some(neighbors) = adj_list.get(&k) {
-                // Remove all references to this node from its neighbors
-                for n in neighbors.clone() {
-                    if let Some(vec) = adj_list.get_mut(&n) {
-                        if let Some(pos) = vec.iter().position(|v| *v == k) {
-                            vec.remove(pos);
-                        }
+        if let Some(neighbours) = adj_list.get(&node_to_visit) {
+            let mut valid_neighbours = 0;
+            for n in neighbours {
+                if !removed.contains(n) {
+                    valid_neighbours += 1;
+                }
+            }
+            if valid_neighbours < 4 {
+                removed.insert(node_to_visit);
+                for n in neighbours {
+                    if !in_queue.contains(n) {
+                        in_queue.insert(*n);
+                        to_visit.push_back(*n);
                     }
                 }
             }
-
-            // Remove the node itself
-            adj_list.remove(&k);
         }
     }
+
+    part2 = removed.len();
 
     println!("Part 2 {part2}");
 
