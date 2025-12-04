@@ -72,17 +72,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let mut free_rolls = 0;
+    let mut part1 = 0;
     for (k, v) in adj_list.iter() {
         if v.len() < 4 {
-            free_rolls += 1;
+            part1 += 1;
         }
     }
 
-    println!("Part 1 {free_rolls}");
+    println!("Part 1 {part1}");
 
     // part 2 in each iteration remove rolls that have < 4 neighbours
-    // repeat until
+    // repeat until no rolls can be removed (this seems naive)
+
+    // brute force grid rescanning
+    let mut part2 = 0;
+    loop {
+        // First pass: collect nodes to remove
+        let to_remove: Vec<(usize, usize)> = adj_list
+            .iter()
+            .filter(|(_, v)| v.len() < 4)
+            .map(|(k, _)| *k)
+            .collect();
+
+        if to_remove.is_empty() {
+            break;
+        }
+
+        // Second pass: remove nodes and update neighbors
+        for k in to_remove {
+            part2 += 1;
+
+            // Get neighbors before removing the node
+            if let Some(neighbors) = adj_list.get(&k) {
+                // Remove all references to this node from its neighbors
+                for n in neighbors.clone() {
+                    if let Some(vec) = adj_list.get_mut(&n) {
+                        if let Some(pos) = vec.iter().position(|v| *v == k) {
+                            vec.remove(pos);
+                        }
+                    }
+                }
+            }
+
+            // Remove the node itself
+            adj_list.remove(&k);
+        }
+    }
+
+    println!("Part 2 {part2}");
 
     Ok(())
 }
