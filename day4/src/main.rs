@@ -16,9 +16,6 @@ struct Args {
     input: String,
 }
 
-const ROLL: char = '@';
-const EMPTY: char = '.';
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let file_path = args.input;
@@ -84,8 +81,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // part 2 in each iteration remove rolls that have < 4 neighbours
     // repeat until no rolls can be removed (this seems naive)
 
-    let mut part2 = 0;
-
     // First pass: collect nodes to remove
     let mut to_visit: VecDeque<(usize, usize)> = adj_list
         .iter()
@@ -121,7 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    part2 = removed.len();
+    let part2 = removed.len();
 
     println!("Part 2 {part2}");
 
