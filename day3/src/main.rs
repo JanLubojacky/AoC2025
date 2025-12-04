@@ -62,6 +62,8 @@ fn monotonic_stack_battery_tuner(battery_bank: &[u64], power_limit: u64) -> Stri
         let need = power_limit as usize - stack.len();
         let mut can_pop = remains.saturating_sub(need);
 
+        // we can replace smaller values from earlier with larger ones from later if we still have
+        // enough values left to create a digit of power_limit places
         while can_pop > 0 && stack.last().is_some_and(|&last| last > val) {
             can_pop -= 1;
             stack.pop();
