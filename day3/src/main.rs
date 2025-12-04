@@ -43,7 +43,7 @@ fn max_idx_and_val_from_slice<T: PartialOrd + Clone>(arr: &[T]) -> Option<(usize
 /// returns the maximum power this array can give given the limitter
 ///
 /// note: this is tail recursion and would be better written as a loop
-fn battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
+fn greedy_battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
     if power_limit == 0 {
         return String::new();
     }
@@ -54,7 +54,44 @@ fn battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
             .expect("Bank is empty");
 
     return max_value.to_string()
-        + &battery_tuner(&battery_bank[max_idx + 1..], remaining_limit).to_string();
+        + &greedy_battery_tuner(&battery_bank[max_idx + 1..], remaining_limit).to_string();
+}
+
+// this is wrong we should pop from optimal_bank
+//  - 1. while we have enough numbers left to reach power_limit digits
+//  - 2. while we have pops left
+//  - 3. while the current digit is larger than the last digit on the stack
+fn monotonic_stack_battery_tuner(battery_bank: &[u64], power_limit: u64) -> String {
+    let mut optimal_bank: Vec<u64> = Vec::new();
+    let mut pops_remaining = battery_bank.len() as u64 - power_limit;
+    println!("");
+    println!("pops_remaining {pops_remaining}");
+
+    for &i in battery_bank {
+        println!("i {i}");
+        // if bank isn't empty check whether we can replace a smaller number
+        if pops_remaining > 0 {
+            if let Some(&last_entry) = optimal_bank.last() {
+                if i > last_entry {
+                    optimal_bank.pop();
+                    pops_remaining -= 1;
+                    println!(
+                        "i {i} was bigger than last_entry {last_entry}, pops_remaining: {pops_remaining}"
+                    );
+                }
+            }
+        }
+
+        if (optimal_bank.len() as u64) < power_limit {
+            optimal_bank.push(i);
+            println!("bank has space left, pushed {i}")
+        }
+    }
+
+    optimal_bank
+        .iter()
+        .map(|&num| num.to_string())
+        .collect::<String>()
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -77,7 +114,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|num| num as u64)
             .collect();
 
-        let power: u64 = battery_tuner(&battery_bank, power_limit).parse()?;
+        // let power: u64 = greedy_battery_tuner(&battery_bank, power_limit).parse()?;
+        let power: u64 = monotonic_stack_battery_tuner(&battery_bank, power_limit).parse()?;
+        println!("power {power}");
         total_power += power;
     }
 
