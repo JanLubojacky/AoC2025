@@ -23,6 +23,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut lines = reader.lines();
     let mut ranges: Vec<(u64, u64)> = Vec::new();
 
+    // now need to figure out
+
     for line in lines
         .by_ref()
         .take_while(|l| l.as_ref().is_ok_and(|l| !l.is_empty()))
@@ -49,6 +51,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("part1 {fresh}");
+
+    // part2
+    ranges.sort_unstable();
+
+    let mut merged_ranges: Vec<(u64, u64)> = Vec::new();
+
+    for (start, end) in ranges {
+        if let Some(&(last_start, last_end)) = merged_ranges.last() {
+            if start <= last_end {
+                if end > last_end {
+                    merged_ranges.pop();
+                    merged_ranges.push((last_start, end));
+                }
+            } else {
+                merged_ranges.push((start, end));
+            }
+        } else {
+            merged_ranges.push((start, end));
+        }
+    }
+
+    let mut part2 = 0;
+    for (start, end) in merged_ranges {
+        part2 += end - start + 1
+    }
+
+    println!("part2 {part2}");
 
     Ok(())
 }
