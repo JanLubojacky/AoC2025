@@ -21,21 +21,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         File::open(&file_path).map_err(|e| format!("Failed to open file {}: {}", file_path, e))?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
+    let mut ranges: Vec<(u64, u64)> = Vec::new();
 
     for line in lines
         .by_ref()
         .take_while(|l| l.as_ref().is_ok_and(|l| !l.is_empty()))
     {
         let line = line?;
-        println!("{line}");
+        // split once because it will produce two halfs, split gives an iterator over all splits
+        let (start, end) = line.split_once('-').unwrap();
+        let start: u64 = start.parse()?;
+        let end: u64 = end.parse()?;
+        ranges.push((start, end));
     }
 
-    println!("#######");
-
+    let mut fresh = 0;
     for line in lines {
         let line = line?;
-        println!("{line}");
+        let num: u64 = line.parse()?;
+
+        for &(start, end) in &ranges {
+            if num >= start && num <= end {
+                fresh += 1;
+                break;
+            }
+        }
     }
+
+    println!("part1 {fresh}");
 
     Ok(())
 }
