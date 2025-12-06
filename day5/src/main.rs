@@ -1,5 +1,6 @@
-/// We need to build a graph from paper rolls, connecting them to each other
-/// afterwards it is simple to check how many neighbours a paper roll has
+/// Could make the part1 more elegant by doing a binary search to find if a number is in a split
+/// when the ranges are sorted
+///
 use clap::Parser;
 use std::{
     fs::File,

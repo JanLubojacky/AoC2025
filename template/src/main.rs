@@ -1,7 +1,4 @@
-/// We need to build a graph from paper rolls, connecting them to each other
-/// afterwards it is simple to check how many neighbours a paper roll has
 use clap::Parser;
-use std::cmp::PartialOrd;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
