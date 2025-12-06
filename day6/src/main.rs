@@ -63,34 +63,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut number_cols: Vec<Vec<Vec<char>>> = Vec::new();
 
         let number_of_digits = rev_lines.len();
-        println!("{number_of_digits}");
+        println!("number of digits {number_of_digits}");
 
         for line in rev_lines.rev() {
-            let numbers: Vec<&str> = line.split(" ").collect();
-            println!("{numbers:?}");
+            let number_of_numbers = line.split_whitespace().collect::<Vec<&str>>().len();
+            let numbers = line.chars().collect::<Vec<char>>();
 
             if number_cols.is_empty() {
-                number_cols = vec![vec![Vec::new(); numbers.len()]; number_of_digits];
+                number_cols = vec![vec![Vec::new(); number_of_digits]; number_of_numbers];
             }
 
-            println!("{number_cols:?}");
-
-            for (i, number) in numbers.iter().enumerate() {
-                let number_len = number.len();
-                for (j, digit) in number.chars().enumerate() {
-                    let position = number_len - j - 1;
-                    println!("{i} {j}: {digit} / {position}");
-                    number_cols[position][i].push(digit);
+            for (i, num) in numbers.chunks(number_of_digits + 1).enumerate() {
+                for j in 0..number_of_digits {
+                    if num[j] != ' ' {
+                        let position = number_of_digits - j - 1;
+                        number_cols[i][position].push(num[j]);
+                    }
                 }
             }
-
-            // break;
         }
+
+        // let result: i64 = number_cols
+        //     .iter()
+        //     .map(|col| {
+        //         col.iter()
+        //             .filter_map(|arr| arr.into_iter().collect::<String>().parse::<i64>().ok())
+        //             .sum::<i64>()
+        //     })
+        //     .sum();
 
         println!("************");
         for n in number_cols {
             println!("{n:?}")
         }
+
+        println!("{result}");
     }
 
     Ok(())
