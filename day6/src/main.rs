@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::process::exit;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -10,6 +11,22 @@ struct Args {
     #[arg(short, long)]
     input: String,
     part: u8,
+}
+
+#[derive(Clone, Copy)]
+enum Sign {
+    Plus,
+    Times,
+}
+
+impl Sign {
+    fn from(ch: &str) -> Self {
+        match ch {
+            "*" => Sign::Times,
+            "+" => Sign::Plus,
+            _ => panic!("Invalid sign!"),
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rev_lines = lines.iter().rev();
 
     let signs = rev_lines.next().ok_or("File is empty")?;
-    let signs: Vec<&str> = signs.split_whitespace().collect();
+    let signs: Vec<Sign> = signs.split_whitespace().map(|ch| Sign::from(ch)).collect();
 
     // println!("{signs:?}");
     if part == 1 {
@@ -49,9 +66,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 // println!("{num} {sign} {num_next}");
                 *num = match sign {
-                    "*" => *num * num_next,
-                    "+" => *num + num_next,
-                    _ => panic!("Illegal operation"),
+                    Sign::Times => *num * num_next,
+                    Sign::Plus => *num + num_next,
                 };
             }
         }
@@ -67,6 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         for line in rev_lines.rev() {
             let number_of_numbers = line.split_whitespace().collect::<Vec<&str>>().len();
+            println!("number_of_numbers {number_of_numbers}");
             let numbers = line.chars().collect::<Vec<char>>();
 
             if number_cols.is_empty() {
@@ -74,6 +91,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             for (i, num) in numbers.chunks(number_of_digits + 1).enumerate() {
+                println!("{num:?}");
+                exit(1);
                 for j in 0..number_of_digits {
                     if num[j] != ' ' {
                         let position = number_of_digits - j - 1;
@@ -83,21 +102,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // let result: i64 = number_cols
-        //     .iter()
-        //     .map(|col| {
-        //         col.iter()
-        //             .filter_map(|arr| arr.into_iter().collect::<String>().parse::<i64>().ok())
-        //             .sum::<i64>()
-        //     })
-        //     .sum();
+        let number_cols: Vec<Vec<i64>> = number_cols
+            .iter()
+            .map(|col| {
+                col.iter()
+                    .filter_map(|arr| arr.into_iter().collect::<String>().parse::<i64>().ok())
+                    .collect::<Vec<i64>>()
+            })
+            .collect();
 
-        println!("************");
-        for n in number_cols {
-            println!("{n:?}")
-        }
+        let result: i64 = number_cols
+            .iter()
+            .zip(signs)
+            .map(|(numbers, sign)| match sign {
+                Sign::Times => numbers.iter().product::<i64>(),
+                Sign::Plus => numbers.iter().sum::<i64>(),
+            })
+            .sum();
 
-        println!("{result}");
+        println!("part2 {result:?}");
     }
 
     Ok(())
