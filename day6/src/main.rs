@@ -1,129 +1,166 @@
 use clap::Parser;
-use std::process::exit;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about=None)]
+#[command(version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
     input: String,
     part: u8,
 }
 
-#[derive(Clone, Copy)]
-enum Sign {
+#[derive(Clone, Copy, Debug)]
+enum Op {
     Plus,
     Times,
 }
 
-impl Sign {
-    fn from(ch: &str) -> Self {
-        match ch {
-            "*" => Sign::Times,
-            "+" => Sign::Plus,
-            _ => panic!("Invalid sign!"),
-        }
-    }
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    let file_path = args.input;
-    let part = args.part;
-
-    let file =
-        File::open(&file_path).map_err(|e| format!("Failed to open file {}: {}", file_path, e))?;
+    let file = File::open(&args.input)?;
     let reader = BufReader::new(file);
     let lines: Vec<String> = reader.lines().collect::<Result<_, _>>()?;
 
+    match args.part {
+        1 => println!("Part 1: {}", solve_part1(&lines)?),
+        2 => println!("Part 2: {}", solve_part2(&lines)?),
+        _ => {
+            println!("Part 1: {}", solve_part1(&lines)?);
+            println!("Part 2: {}", solve_part2(&lines)?);
+        }
+    }
+
+    Ok(())
+}
+
+fn solve_part1(lines: &[String]) -> Result<i64, Box<dyn std::error::Error>> {
     let mut rev_lines = lines.iter().rev();
+    let signs_line = rev_lines.next().ok_or("File is empty")?;
+    let signs: Vec<Op> = signs_line
+        .split_whitespace()
+        .map(|ch| match ch {
+            "*" => Op::Times,
+            "+" => Op::Plus,
+            _ => panic!("Invalid sign: {}", ch),
+        })
+        .collect();
 
-    let signs = rev_lines.next().ok_or("File is empty")?;
-    let signs: Vec<Sign> = signs.split_whitespace().map(|ch| Sign::from(ch)).collect();
+    let first_line = rev_lines.next().ok_or("File has only one line")?;
+    let mut numbers: Vec<i64> = first_line
+        .split_whitespace()
+        .filter_map(|num| num.parse().ok())
+        .collect();
 
-    // println!("{signs:?}");
-    if part == 1 {
-        let initial_numbers = rev_lines.next().ok_or("File has only one line")?;
-        let mut numbers: Vec<i64> = initial_numbers
+    for line in rev_lines {
+        let next_numbers: Vec<i64> = line
             .split_whitespace()
             .filter_map(|num| num.parse().ok())
             .collect();
 
-        // println!("{numbers:?}");
-
-        for line in rev_lines {
-            let next_numbers: Vec<i64> = line
-                .split_whitespace()
-                .filter_map(|num| num.parse().ok())
-                .collect();
-            for ((num, &num_next), &sign) in numbers
-                .iter_mut()
-                .zip(next_numbers.iter())
-                .zip(signs.iter())
-            {
-                // println!("{num} {sign} {num_next}");
-                *num = match sign {
-                    Sign::Times => *num * num_next,
-                    Sign::Plus => *num + num_next,
-                };
-            }
+        for ((num, &num_next), &sign) in numbers
+            .iter_mut()
+            .zip(next_numbers.iter())
+            .zip(signs.iter())
+        {
+            *num = match sign {
+                Op::Times => *num * num_next,
+                Op::Plus => *num + num_next,
+            };
         }
-
-        let result: i64 = numbers.iter().sum();
-
-        println!("part1 {result}");
-    } else if part == 2 {
-        let mut number_cols: Vec<Vec<Vec<char>>> = Vec::new();
-
-        let number_of_digits = rev_lines.len();
-        println!("number of digits {number_of_digits}");
-
-        // change this, split by whitespace and then process each number slice
-        // from the back
-
-        for line in rev_lines.rev() {
-            let number_of_numbers = line.split_whitespace().collect::<Vec<&str>>().len();
-            println!("number_of_numbers {number_of_numbers}");
-            let numbers = line.chars().collect::<Vec<char>>();
-
-            if number_cols.is_empty() {
-                number_cols = vec![vec![Vec::new(); number_of_digits]; number_of_numbers];
-            }
-
-            for (i, num) in numbers.chunks(number_of_digits + 1).enumerate() {
-                println!("{num:?}");
-                for j in 0..number_of_digits {
-                    if num[j] != ' ' {
-                        let position = number_of_digits - j - 1;
-                        number_cols[i][position].push(num[j]);
-                    }
-                }
-            }
-        }
-
-        let number_cols: Vec<Vec<i64>> = number_cols
-            .iter()
-            .map(|col| {
-                col.iter()
-                    .filter_map(|arr| arr.into_iter().collect::<String>().parse::<i64>().ok())
-                    .collect::<Vec<i64>>()
-            })
-            .collect();
-
-        let result: i64 = number_cols
-            .iter()
-            .zip(signs)
-            .map(|(numbers, sign)| match sign {
-                Sign::Times => numbers.iter().product::<i64>(),
-                Sign::Plus => numbers.iter().sum::<i64>(),
-            })
-            .sum();
-
-        println!("part2 {result:?}");
     }
 
-    Ok(())
+    Ok(numbers.iter().sum())
+}
+
+fn solve_part2(lines: &[String]) -> Result<i64, Box<dyn std::error::Error>> {
+    // Find the maximum line length to create a uniform grid
+    let max_len = lines.iter().map(|l| l.len()).max().unwrap_or(0);
+
+    // Convert to a 2D character grid, padding shorter lines with spaces
+    let grid: Vec<Vec<char>> = lines
+        .iter()
+        .map(|l| {
+            let mut chars: Vec<char> = l.chars().collect();
+            chars.resize(max_len, ' ');
+            chars
+        })
+        .collect();
+
+    let num_rows = grid.len();
+    let num_cols = max_len;
+    let data_rows = num_rows - 1; // Last row contains operators
+
+    // Find separator columns (columns that are ALL spaces in data rows)
+    let is_separator: Vec<bool> = (0..num_cols)
+        .map(|col| (0..data_rows).all(|row| grid[row][col] == ' '))
+        .collect();
+
+    // Group adjacent non-separator columns into problems
+    let mut problems: Vec<(Vec<usize>, Op)> = Vec::new();
+    let mut current_cols: Vec<usize> = Vec::new();
+
+    for col in 0..num_cols {
+        if is_separator[col] {
+            if !current_cols.is_empty() {
+                let op = find_operator(&grid, data_rows, &current_cols)?;
+                problems.push((current_cols.clone(), op));
+                current_cols.clear();
+            }
+        } else {
+            current_cols.push(col);
+        }
+    }
+    // Don't forget the last problem if it doesn't end with a separator
+    if !current_cols.is_empty() {
+        let op = find_operator(&grid, data_rows, &current_cols)?;
+        problems.push((current_cols, op));
+    }
+
+    // Solve each problem
+    let total: i64 = problems
+        .iter()
+        .map(|(cols, op)| {
+            // Each column forms a number by reading digits top-to-bottom
+            let numbers: Vec<i64> = cols
+                .iter()
+                .filter_map(|&col| {
+                    let digits: String = (0..data_rows)
+                        .filter_map(|row| {
+                            let c = grid[row][col];
+                            if c.is_ascii_digit() { Some(c) } else { None }
+                        })
+                        .collect();
+
+                    if digits.is_empty() {
+                        None
+                    } else {
+                        Some(digits.parse::<i64>().unwrap())
+                    }
+                })
+                .collect();
+
+            match op {
+                Op::Plus => numbers.iter().sum::<i64>(),
+                Op::Times => numbers.iter().product::<i64>(),
+            }
+        })
+        .sum();
+
+    Ok(total)
+}
+
+fn find_operator(
+    grid: &[Vec<char>],
+    sign_row: usize,
+    cols: &[usize],
+) -> Result<Op, Box<dyn std::error::Error>> {
+    for &col in cols {
+        match grid[sign_row][col] {
+            '+' => return Ok(Op::Plus),
+            '*' => return Ok(Op::Times),
+            _ => continue,
+        }
+    }
+    Err("No operator found in problem columns".into())
 }
