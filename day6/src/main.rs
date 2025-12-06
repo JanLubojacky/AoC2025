@@ -81,6 +81,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let number_of_digits = rev_lines.len();
         println!("number of digits {number_of_digits}");
 
+        // change this, split by whitespace and then process each number slice
+        // from the back
+
         for line in rev_lines.rev() {
             let number_of_numbers = line.split_whitespace().collect::<Vec<&str>>().len();
             println!("number_of_numbers {number_of_numbers}");
@@ -92,7 +95,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             for (i, num) in numbers.chunks(number_of_digits + 1).enumerate() {
                 println!("{num:?}");
-                exit(1);
                 for j in 0..number_of_digits {
                     if num[j] != ' ' {
                         let position = number_of_digits - j - 1;
