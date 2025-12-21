@@ -1,4 +1,5 @@
 use clap::Parser;
+use itertools::{self, Itertools};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -13,41 +14,28 @@ struct Args {
 
 #[derive(Debug)]
 struct UnionFind {
-    sizes: Vec<u64>,
-    members: Vec<u64>,
+    ranks: Vec<u64>,
     parents: Vec<usize>,
+    num_components: usize,
 }
 
 impl UnionFind {
     fn union(&mut self, u: usize, v: usize) {
-        if self.sizes[u] < self.sizes[v] {
+        if self.ranks[u] < self.ranks[v] {
             self.parents[u] = v;
-
-            if self.sizes[v] == 0 {
-                self.sizes[v] = 1;
-            } else {
-                self.sizes[v] += self.sizes[u];
-            }
-
-            self.members[v] += self.members[u];
+        } else if self.ranks[u] > self.ranks[v] {
+            self.parents[v] = u;
         } else {
             self.parents[v] = u;
-
-            if self.sizes[u] == 0 {
-                self.sizes[u] = 1;
-            } else {
-                self.sizes[u] += self.sizes[v];
-            }
-
-            self.members[u] += self.members[v];
+            self.ranks[u] += 1;
         }
+        self.num_components -= 1;
     }
-    fn find(&self, id: usize) -> usize {
-        if id == self.parents[id] {
-            return id;
-        } else {
-            self.find(self.parents[id])
+    fn find(&mut self, id: usize) -> usize {
+        if id != self.parents[id] {
+            self.parents[id] = self.find(self.parents[id]);
         }
+        self.parents[id]
     }
 }
 
@@ -60,13 +48,7 @@ struct Coord {
 
 impl Coord {
     fn dist(&self, other: &Self) -> f64 {
-        return (
-            (
-                (self.x - other.x).pow(2) +
-                (self.y - other.y).pow(2) +
-                (self.z - other.z).pow(2)
-            ) as f64
-        ).sqrt();
+        ((self.x - other.x).pow(2) + (self.y - other.y).pow(2) + (self.z - other.z).pow(2)) as f64
     }
 }
 
@@ -78,7 +60,7 @@ struct Edge {
 }
 
 impl Edge {
-    fn new(coords: &Vec<Coord>, u: usize, v: usize) -> Self {
+    fn new(coords: &[Coord], u: usize, v: usize) -> Self {
         return Self {
             u: u,
             v: v,
@@ -101,7 +83,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // read in input
     for line in reader.lines() {
         let line = line?;
-        println!("{line}");
         let nums: Vec<i64> = line
             .split(',')
             .filter_map(|num| num.parse::<i64>().ok())
@@ -117,9 +98,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut uf = UnionFind {
-        sizes: vec![0; nodes.len()],
-        members: vec![1; nodes.len()],
+        ranks: vec![0; nodes.len()],
         parents: (0..nodes.len()).collect(),
+        num_components: nodes.len(),
     };
 
     // go trough all combinations of edges
@@ -134,9 +115,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut part2: u64 = 0;
 
-    // for i in 0..1000.min(edges.len()) { // part 1
+    // part 1
+    // for i in 0..1000.min(edges.len()) {
+    // part 2
     for i in 0..edges.len() {
-        // part 2
         let edge = &edges[i];
 
         // join nodes with this edge if they are already not together
@@ -146,22 +128,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             uf.union(root_u, root_v);
         }
 
-        // if everything is in one component break
-        let mut parents = 0;
-        for (i, &pn) in uf.parents.iter().enumerate() {
-            if i == pn {
-                parents += 1;
-            }
-        }
-        if parents == 1 {
+        // part 2
+        if uf.num_components == 1 {
             part2 = nodes[edge.u].x as u64 * nodes[edge.v].x as u64;
             break;
         }
     }
 
-    // uf.members.sort_by(|a, b| b.cmp(a));
-    // println!("{:?}", uf.members);
-    // println!("PART 1: {}", uf.members[0] * uf.members[1] * uf.members[2]);
+    // PART 1
+    // ensure path compression everywhere
+    for i in 0..nodes.len() {
+        uf.find(i);
+    }
+    // get value counts on uf.parents and multiply the first 3
+    // let counts = uf.parents.iter().counts();
+    // let mut vals: Vec<usize> = counts.iter().map(|(&&k, &v)| v).collect();
+    // vals.sort_by(|a, b| b.cmp(a));
+    // let part1 = vals[0] * vals[1] * vals[2];
+    // println! {"PART 1: {part1}"};
 
     println! {"PART 2: {part2}"};
 
