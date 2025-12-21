@@ -1,13 +1,4 @@
-// kruskal
-//
-// implement a graph structure
-// find all the edges and sort them
-// implement a union find
-// after the required number of iterations find out the size of all the sets in union find and
-// multiply the 3 largest ones
 use clap::Parser;
-use std::cmp::{Ordering, Reverse};
-use std::collections::BinaryHeap;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -20,25 +11,43 @@ struct Args {
     input: String,
 }
 
-// union find
-// init each component as a different root each component stores pointer to parent and subtree size
-// FIND -> climb from the vertex to the root and return that root
-// UNION -> ru = FIND(u) and rv = FIND(v) if they differ attach the smaller component under the
-// root of the bigger component
-//
-// need to be able to find each node by index
-// so a vector of structs where each struct points to its parent or says I am root?
-
-struct UFNode {
-    size: u64,
-    parent: Option<usize>, // idx of the node in the union find it points to or None if this is the
-                           // root
+#[derive(Debug)]
+struct UnionFind {
+    sizes: Vec<u64>,
+    members: Vec<u64>,
+    parents: Vec<usize>,
 }
 
-impl UFNode {
-    fn union(u: usize, v: usize) {}
-    fn find(id: usize) -> usize {
-        0
+impl UnionFind {
+    fn union(&mut self, u: usize, v: usize) {
+        if self.sizes[u] < self.sizes[v] {
+            self.parents[u] = v;
+
+            if self.sizes[v] == 0 {
+                self.sizes[v] = 1;
+            } else {
+                self.sizes[v] += self.sizes[u];
+            }
+
+            self.members[v] += self.members[u];
+        } else {
+            self.parents[v] = u;
+
+            if self.sizes[u] == 0 {
+                self.sizes[u] = 1;
+            } else {
+                self.sizes[u] += self.sizes[v];
+            }
+
+            self.members[u] += self.members[v];
+        }
+    }
+    fn find(&self, id: usize) -> usize {
+        if id == self.parents[id] {
+            return id;
+        } else {
+            self.find(self.parents[id])
+        }
     }
 }
 
@@ -88,7 +97,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // construct sorted edge list
     let mut nodes: Vec<Coord> = Vec::new();
-    let mut uf: Vec<UFNode> = Vec::new();
 
     // read in input
     for line in reader.lines() {
@@ -106,13 +114,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             y: nums[1],
             z: nums[2],
         });
-        uf.push(UFNode {
-            parent: None,
-            size: 0,
-        });
     }
 
-    println!("{nodes:#?}");
+    let mut uf = UnionFind {
+        sizes: vec![0; nodes.len()],
+        members: vec![1; nodes.len()],
+        parents: (0..nodes.len()).collect(),
+    };
 
     // go trough all combinations of edges
     // and sort them
@@ -124,13 +132,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     edges.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap());
 
-    // first few edges correct
-    // for i in 0..4 {
-    //     println!(
-    //         "{:#?} {:#?} {:#?}",
-    //         edges[i].dist, nodes[edges[i].u], nodes[edges[i].v]
-    //     );
-    // }
+    let mut part2: u64 = 0;
+
+    // for i in 0..1000.min(edges.len()) { // part 1
+    for i in 0..edges.len() {
+        // part 2
+        let edge = &edges[i];
+
+        // join nodes with this edge if they are already not together
+        let root_u = uf.find(edge.u);
+        let root_v = uf.find(edge.v);
+        if root_u != root_v {
+            uf.union(root_u, root_v);
+        }
+
+        // if everything is in one component break
+        let mut parents = 0;
+        for (i, &pn) in uf.parents.iter().enumerate() {
+            if i == pn {
+                parents += 1;
+            }
+        }
+        if parents == 1 {
+            part2 = nodes[edge.u].x as u64 * nodes[edge.v].x as u64;
+            break;
+        }
+    }
+
+    // uf.members.sort_by(|a, b| b.cmp(a));
+    // println!("{:?}", uf.members);
+    // println!("PART 1: {}", uf.members[0] * uf.members[1] * uf.members[2]);
+
+    println! {"PART 2: {part2}"};
 
     Ok(())
 }
