@@ -169,40 +169,29 @@ fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    for i in extended_pts.windows(3) {
-        let first = i[0];
-        let second = i[1];
-        let third = i[2];
-        let fourth = if first.x == second.x {
-            Point {
-                x: third.x,
-                y: first.y,
-            }
-        } else if first.y == second.y {
-            Point {
-                x: first.x,
-                y: third.y,
-            }
-        } else {
-            panic!(
-                "Invalid point configuration: {:?} {:?} {:?}",
-                first, second, third
-            );
-        };
+    // Check if each rectangle's fourth corner is inside other rectangles
+    for i in 0..rects.len() {
+        let fourth_to_check = rects[i].fourth;
 
-        for r in &mut rects {
-            if r.fourth == fourth {
+        for j in 0..rects.len() {
+            if i == j {
                 continue;
             }
+
+            let r = &rects[j];
             let (ul, dr) = up_left_down_right(r.first, r.second, r.third, r.fourth);
-            println!("ul {ul:?}, dr {dr:?}");
-            if ul.x <= fourth.x && fourth.x <= dr.x && ul.y <= fourth.y && fourth.y <= dr.y {
-                r.fourth_in += 1;
+
+            if ul.x <= fourth_to_check.x
+                && fourth_to_check.x <= dr.x
+                && ul.y <= fourth_to_check.y
+                && fourth_to_check.y <= dr.y
+            {
+                rects[i].fourth_in += 1;
             }
         }
     }
 
-    println!("{:#?}", rects);
+    // println!("{:#?}", rects);
 
     let max_rect = rects
         .iter()
@@ -211,6 +200,7 @@ fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("No rectangles")?;
 
     // 129411462 TOO LOW
+    // 830804 TOO LOW
     println!("PART2 {}", max_rect.area);
 
     Ok(())
