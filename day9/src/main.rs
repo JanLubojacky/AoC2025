@@ -82,15 +82,15 @@ fn part1(mut pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[derive(Debug, Copy, Clone)]
-struct Rectangle {
-    area: i64,
-    first: Point,
-    second: Point,
-    third: Point,
-    fourth: Point,
-    fourth_in: u64,
-}
+// #[derive(Debug, Copy, Clone)]
+// struct Rectangle {
+//     area: i64,
+//     first: Point,
+//     second: Point,
+//     third: Point,
+//     fourth: Point,
+//     fourth_in: u64,
+// }
 
 fn up_left_down_right(p1: Point, p2: Point, p3: Point, p4: Point) -> (Point, Point) {
     let mut pts = [p1, p2, p3, p4];
@@ -109,99 +109,79 @@ fn up_left_down_right(p1: Point, p2: Point, p3: Point, p4: Point) -> (Point, Poi
     (pts[0], pts[3])
 }
 
-// if a red tile is always a corner it should be possible to check all triples that follow each
-// other and mark its area and the location of the 4th corner (this should be the case based on
-// the puzzle input)
-//
-// then do another round and for each rectangle formed by a triplet check if the 4th corner of
-// another rectangle is inside it if yes, mark the rectangle as valid and track the area of
-// valid rectangles, return the one with the largest area
-//
-// this does ignore thin rectangles formed by two successive points though but that should be a
-// reasonable heuristic
-fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
-    let mut rects: Vec<Rectangle> = Vec::new();
-
-    let mut extended_pts = pts.clone();
-    extended_pts.extend_from_slice(&pts[..2]);
-
-    for i in extended_pts.windows(3) {
-        let first = i[0];
-        let second = i[1];
-        let third = i[2];
-        let fourth = if first.x == second.x {
-            Point {
-                x: third.x,
-                y: first.y,
-            }
-        } else if first.y == second.y {
-            Point {
-                x: first.x,
-                y: third.y,
-            }
-        } else {
-            panic!(
-                "Invalid point configuration: {:?} {:?} {:?}",
-                first, second, third
-            );
-        };
-
-        println!("{first:?} {second:?} {third:?}");
-
-        if first.x == third.x || first.y == third.y {
-            panic!(
-                "Three points on a line, this won't work :( {:?} {:?} {:?}",
-                first, second, third
-            );
-        }
-
-        // for a recatangle to be valid its 4th corner should be in at least two other rectangles
-        //
-        // is it possible that a 4th corner will be in 2 invalid rectangles?
-        //
-        rects.push(Rectangle {
-            area: first.area(third),
-            first: first,
-            second: second,
-            third: third,
-            fourth: fourth,
-            fourth_in: 0,
-        });
-    }
-
-    // Check if each rectangle's fourth corner is inside other rectangles
-    for i in 0..rects.len() {
-        let fourth_to_check = rects[i].fourth;
-
-        for j in 0..rects.len() {
-            if i == j {
-                continue;
-            }
-
-            let r = &rects[j];
-            let (ul, dr) = up_left_down_right(r.first, r.second, r.third, r.fourth);
-
-            if ul.x <= fourth_to_check.x
-                && fourth_to_check.x <= dr.x
-                && ul.y <= fourth_to_check.y
-                && fourth_to_check.y <= dr.y
-            {
-                rects[i].fourth_in += 1;
-            }
-        }
-    }
-
-    // println!("{:#?}", rects);
-
-    let max_rect = rects
+/// by counting edge crossings to the right of this point determine if inside or outside
+fn is_point_inside(p: Point, vertical_edges: &Vec<(Point, Point)>) -> bool {
+    let crossings: Vec<&(Point, Point)> = vertical_edges
         .iter()
-        .filter(|&&r| r.fourth_in > 2)
-        .max_by_key(|&&r| r.area)
-        .ok_or("No rectangles")?;
+        .filter(|(e1, e2)| {
+            // (to the right) && (same height)
+            if (e1.x >= p.x) && (e1.y <= p.y && p.y <= e2.y) {
+                return true;
+            }
+            false
+        })
+        .collect();
+
+    println!(
+        "point {:?}, n cross {}, cross {:?}",
+        p,
+        crossings.len(),
+        crossings
+    );
+
+    if crossings.len() % 2 == 0 {
+        return false;
+    }
+    true
+}
+
+fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
+    // collect all vertical edges of the polygon, two successive points form an edge
+    let mut edges: Vec<(Point, Point)> = Vec::new();
+    // zip each point with the next one (wrapping)
+    for (p0, p1) in pts.iter().zip(pts.iter().cycle().skip(1)) {
+        // println!("pair: {p0:?}, {p1:?}");
+        if p0.x == p1.x {
+            edges.push((*p0, *p1));
+        }
+    }
+
+    println!("edges: {edges:#?}");
+    //
+    // return Ok(());
+
+    let mut pl1: Point = Point { x: -1, y: -1 };
+    let mut pl2: Point = Point { x: -1, y: -1 };
+    let mut largest_area = 0;
+
+    // for all unique combinations of 2 pts
+    for i in 0..pts.len() {
+        for j in (i + 1)..pts.len() {
+            let c1 = pts[i];
+            let c2 = pts[j];
+            let c3 = Point { x: c1.x, y: c2.y };
+            let c4 = Point { x: c2.x, y: c1.y };
+
+            println!("{c1:?} {c2:?} {c3:?} {c4:?}");
+
+            if is_point_inside(c3, &edges) && is_point_inside(c4, &edges) {
+                let area = ((c1.x - c2.x).abs() + 1) * ((c1.y - c2.y).abs() + 1);
+                pl1 = c1;
+                pl2 = c2;
+
+                println!("Is inside area: {area}");
+                largest_area = largest_area.max(area);
+            }
+        }
+    }
+    // collect points
+    //
+    // for each pair of points check if the other two corners are within the polygon or not by
+    // collecting all edges that are to the right of the point and on the same height
 
     // 129411462 TOO LOW
     // 830804 TOO LOW
-    println!("PART2 {}", max_rect.area);
+    println!("PART2 {}, p1 {:?}, p2 {:?}", largest_area, pl1, pl2);
 
     Ok(())
 }
