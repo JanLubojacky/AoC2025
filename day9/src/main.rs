@@ -25,8 +25,6 @@ impl Point {
     fn area(&self, other: Point) -> i64 {
         let lenght = (self.x - other.x).abs() + 1;
         let width = (self.y - other.y).abs() + 1;
-        // println!("lenght {lenght}");
-        // println!("width {width}");
         lenght * width
     }
 }
@@ -41,6 +39,8 @@ impl Point {
 // 2: largest x and smallest y & smallest x and largest y
 //
 // find both with sorts and compare which one is larger
+//
+// O(n*log(n))
 //
 fn part1(mut pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
     pts.sort_by(|a, b| {
@@ -75,38 +75,11 @@ fn part1(mut pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
     let diff2 = pts.last().ok_or("no pts")?.clone();
     let area2 = diff1.area(diff2);
 
-    println!("{area1} {area2}");
+    // println!("{area1} {area2}");
 
     println!("PART 1: {}", area1.max(area2));
 
     Ok(())
-}
-
-// #[derive(Debug, Copy, Clone)]
-// struct Rectangle {
-//     area: i64,
-//     first: Point,
-//     second: Point,
-//     third: Point,
-//     fourth: Point,
-//     fourth_in: u64,
-// }
-
-fn up_left_down_right(p1: Point, p2: Point, p3: Point, p4: Point) -> (Point, Point) {
-    let mut pts = [p1, p2, p3, p4];
-    pts.sort_by(|a, b| {
-        let a_sum = a.x + a.y;
-        let b_sum = b.x + b.y;
-
-        if a_sum < b_sum {
-            return Ordering::Less;
-        } else if a_sum > b_sum {
-            return Ordering::Greater;
-        }
-        Ordering::Equal
-    });
-
-    (pts[0], pts[3])
 }
 
 /// by counting edge crossings to the right of this point determine if inside or outside
@@ -122,12 +95,12 @@ fn is_point_inside(p: Point, vertical_edges: &Vec<(Point, Point)>) -> bool {
         })
         .collect();
 
-    println!(
-        "point {:?}, n cross {}, cross {:?}",
-        p,
-        crossings.len(),
-        crossings
-    );
+    // println!(
+    //     "point {:?}, n cross {}, cross {:?}",
+    //     p,
+    //     crossings.len(),
+    //     crossings
+    // );
 
     if crossings.len() % 2 == 0 {
         return false;
@@ -140,15 +113,15 @@ fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
     let mut edges: Vec<(Point, Point)> = Vec::new();
     // zip each point with the next one (wrapping)
     for (p0, p1) in pts.iter().zip(pts.iter().cycle().skip(1)) {
-        // println!("pair: {p0:?}, {p1:?}");
         if p0.x == p1.x {
-            edges.push((*p0, *p1));
+            // bounds checking assumes that the ordering in the tuple is (upper, lower)
+            if p1.y < p0.y {
+                edges.push((*p1, *p0));
+            } else {
+                edges.push((*p0, *p1));
+            }
         }
     }
-
-    println!("edges: {edges:#?}");
-    //
-    // return Ok(());
 
     let mut pl1: Point = Point { x: -1, y: -1 };
     let mut pl2: Point = Point { x: -1, y: -1 };
@@ -162,26 +135,25 @@ fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
             let c3 = Point { x: c1.x, y: c2.y };
             let c4 = Point { x: c2.x, y: c1.y };
 
-            println!("{c1:?} {c2:?} {c3:?} {c4:?}");
+            // println!("{c1:?} {c2:?} {c3:?} {c4:?}");
 
             if is_point_inside(c3, &edges) && is_point_inside(c4, &edges) {
                 let area = ((c1.x - c2.x).abs() + 1) * ((c1.y - c2.y).abs() + 1);
-                pl1 = c1;
-                pl2 = c2;
 
-                println!("Is inside area: {area}");
+                if area > largest_area {
+                    pl1 = c1;
+                    pl2 = c2;
+                }
+                // println!("Is inside area: {area}");
                 largest_area = largest_area.max(area);
             }
         }
     }
-    // collect points
-    //
-    // for each pair of points check if the other two corners are within the polygon or not by
-    // collecting all edges that are to the right of the point and on the same height
 
     // 129411462 TOO LOW
     // 830804 TOO LOW
-    println!("PART2 {}, p1 {:?}, p2 {:?}", largest_area, pl1, pl2);
+    // 4726851885 not right
+    println!("PART 2: {}, p1 {:?}, p2 {:?}", largest_area, pl1, pl2);
 
     Ok(())
 }
@@ -203,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pts.push(Point { x: x, y: y })
     }
 
-    // part1(pts.clone());
+    part1(pts.clone());
     part2(pts);
 
     Ok(())
