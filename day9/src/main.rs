@@ -19,9 +19,6 @@ struct Point {
 }
 
 impl Point {
-    fn l1(&self, other: Point) -> i64 {
-        (self.x - other.x).abs() + (self.y - other.y).abs()
-    }
     fn area(&self, other: Point) -> i64 {
         let lenght = (self.x - other.x).abs() + 1;
         let width = (self.y - other.y).abs() + 1;
@@ -83,15 +80,28 @@ fn part1(mut pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// by counting edge crossings to the right of this point determine if inside or outside
-fn is_point_inside(p: Point, vertical_edges: &Vec<(Point, Point)>) -> bool {
+fn is_point_inside(p: Point, vertical_edges: &Vec<(Point, Point)>, pts: &Vec<Point>) -> bool {
+    // check if point is on any boundary
+    for (p0, p1) in pts.iter().zip(pts.iter().cycle().skip(1)) {
+        // vertical edge and p is in the same col
+        if p0.x == p1.x && p0.x == p.x {
+            if p0.y.min(p1.y) <= p.y && p.y <= p0.y.max(p1.y) {
+                return true;
+            }
+        // horizontal edge and p is in the same row
+        } else if p.y == p0.y {
+            if p0.x.min(p1.x) <= p.x && p.x <= p0.x.max(p1.x) {
+                return true;
+            }
+        }
+    }
+
+    // raycast to the right
     let crossings: Vec<&(Point, Point)> = vertical_edges
         .iter()
         .filter(|(e1, e2)| {
             // (to the right) && (same height)
-            if (e1.x >= p.x) && (e1.y <= p.y && p.y <= e2.y) {
-                return true;
-            }
-            false
+            (e1.x > p.x) && (e1.y <= p.y && p.y < e2.y)
         })
         .collect();
 
@@ -108,17 +118,48 @@ fn is_point_inside(p: Point, vertical_edges: &Vec<(Point, Point)>) -> bool {
     true
 }
 
+fn edge_cuts_rectangle(pts: &Vec<Point>, x1: i64, x2: i64, y1: i64, y2: i64) -> bool {
+    let (minx, maxx) = (x1.min(x2), x1.max(x2));
+    let (miny, maxy) = (y1.min(y2), y1.max(y2));
+
+    for i in 0..pts.len() {
+        let p0 = pts[i];
+        let p1 = pts[(i + 1) % pts.len()];
+
+        if p0.x == p1.x {
+            // Vertical edge - does it cut through rectangle's interior?
+            let (ey_min, ey_max) = (p0.y.min(p1.y), p0.y.max(p1.y));
+            if minx < p0.x && p0.x < maxx  // strictly inside x-range
+                && ey_min < maxy && ey_max > miny
+            // y-ranges overlap
+            {
+                return true;
+            }
+        } else {
+            // Horizontal edge
+            let (ex_min, ex_max) = (p0.x.min(p1.x), p0.x.max(p1.x));
+            if miny < p0.y && p0.y < maxy  // strictly inside y-range
+                && ex_min < maxx && ex_max > minx
+            // x-ranges overlap
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
     // collect all vertical edges of the polygon, two successive points form an edge
-    let mut edges: Vec<(Point, Point)> = Vec::new();
+    let mut vertical_edges: Vec<(Point, Point)> = Vec::new();
     // zip each point with the next one (wrapping)
     for (p0, p1) in pts.iter().zip(pts.iter().cycle().skip(1)) {
         if p0.x == p1.x {
             // bounds checking assumes that the ordering in the tuple is (upper, lower)
             if p1.y < p0.y {
-                edges.push((*p1, *p0));
+                vertical_edges.push((*p1, *p0));
             } else {
-                edges.push((*p0, *p1));
+                vertical_edges.push((*p0, *p1));
             }
         }
     }
@@ -137,8 +178,11 @@ fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
 
             // println!("{c1:?} {c2:?} {c3:?} {c4:?}");
 
-            if is_point_inside(c3, &edges) && is_point_inside(c4, &edges) {
-                let area = ((c1.x - c2.x).abs() + 1) * ((c1.y - c2.y).abs() + 1);
+            if is_point_inside(c3, &vertical_edges, &pts)
+                && is_point_inside(c4, &vertical_edges, &pts)
+                && !edge_cuts_rectangle(&pts, c1.x, c2.x, c1.y, c2.y)
+            {
+                let area = c1.area(c2);
 
                 if area > largest_area {
                     pl1 = c1;
@@ -150,9 +194,6 @@ fn part2(pts: Vec<Point>) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 129411462 TOO LOW
-    // 830804 TOO LOW
-    // 4726851885 not right
     println!("PART 2: {}, p1 {:?}, p2 {:?}", largest_area, pl1, pl2);
 
     Ok(())
