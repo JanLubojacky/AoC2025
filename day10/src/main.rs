@@ -1,6 +1,6 @@
 use clap::Parser;
 use itertools::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -48,6 +48,25 @@ fn solve_diagram(diagram: HashSet<u64>, buttons: Vec<HashSet<u64>>) -> u64 {
     0
 }
 
+fn balance_joltage(joltage: Vec<u64>, buttons: Vec<HashSet<u64>>) -> u64 {
+    let mut r = 1;
+    loop {
+        for combination in buttons.iter().combinations_with_replacement(r) {
+            let mut result = vec![0; joltage.len()];
+            for comb in combination {
+                for &value in comb {
+                    result[value as usize] += 1;
+                }
+            }
+
+            if result == joltage {
+                return r as u64;
+            }
+        }
+        r += 1;
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let file_path = args.input;
@@ -60,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for line in reader.lines() {
         let line = line?;
-        let mut splits: Vec<&str> = line.split_whitespace().collect();
+        let splits: Vec<&str> = line.split_whitespace().collect();
 
         // first diagram
         let diagram: HashSet<u64> = splits[0]
@@ -96,10 +115,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .filter_map(|s| s.parse::<u64>().ok())
             .collect();
 
-        result += solve_diagram(diagram, buttons);
+        // result += solve_diagram(diagram, buttons);
+        result += balance_joltage(joltages, buttons);
     }
 
-    println!("PART 1: {result}");
+    println!("SOLUTION: {result}");
 
     Ok(())
 }
