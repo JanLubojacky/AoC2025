@@ -1,9 +1,8 @@
 /// [x] parse in the input into a graph
-/// [ ] BFS on the graph and each time a vertex is reached add 1 to it
-/// [ ] Result will be in the out vertex
+/// [ ] get topological ordering of the graph
 use clap::Parser;
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -15,111 +14,74 @@ struct Args {
     input: String,
 }
 
-fn visited_counts(
+/// needs to be implemented via recursion so that a node gets added only after all its children are
+/// processed
+///
+/// we can also make some assumptions given the input
+/// - we have the starting node of the DAG, so we will be able to reach everything we are interested in from it
+fn topological_ordering(
     adj_list: &HashMap<String, Vec<String>>,
-    queue: &mut VecDeque<String>,
-) -> HashMap<String, u64> {
-    let mut visited: HashMap<String, u64> = HashMap::new();
+    starting_vertices: &[String],
+) -> Vec<String> {
+    let mut visited: HashSet<String> = HashSet::new();
+    let mut topo: Vec<String> = Vec::new();
 
-    while let Some(vertex) = queue.pop_front() {
-        *visited.entry(vertex.clone()).or_insert(0) += 1;
+    for start_vertex in starting_vertices {
+        topo_dfs_helper(start_vertex, &adj_list, &mut visited, &mut topo);
+    }
 
-        if let Some(neighbours) = adj_list.get(&vertex) {
+    topo.reverse();
+    topo
+}
+
+fn topo_dfs_helper(
+    vertex: &str,
+    adj_list: &HashMap<String, Vec<String>>,
+    visited: &mut HashSet<String>,
+    topo: &mut Vec<String>,
+) {
+    if visited.contains(vertex) {
+        return;
+    }
+    visited.insert(vertex.to_string());
+    if let Some(neighbours) = adj_list.get(vertex) {
+        for n in neighbours {
+            topo_dfs_helper(n, adj_list, visited, topo);
+        }
+    }
+
+    topo.push(vertex.to_string());
+}
+
+// fn visited_counts(
+//     adj_list: &HashMap<String, Vec<String>>,
+//     queue: &mut VecDeque<String>,
+// ) -> HashMap<String, u64> {
+//     // 1. topological ordering
+//     let topo =
+//
+//     // 2. process vertices in topological order
+// }
+
+/// graph should be a DAG so a bfs should finish eventually even without visited
+/// keep visited count for each vertex
+fn part1(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::error::Error>> {
+    let queue = vec!["you".to_string()];
+
+    let topo = topological_ordering(adj_list, &queue);
+    let mut visited_counts: HashMap<String, u64> = HashMap::new();
+    visited_counts.insert("you".to_string(), 1);
+
+    for v in topo {
+        if let Some(neighbours) = adj_list.get(&v) {
             for n in neighbours {
-                queue.push_back(n.clone());
+                *visited_counts.entry(n.to_string()).or_insert(0) += 1;
             }
         }
     }
 
-    visited
-}
+    let result = visited_counts.get("out").ok_or("out unreachable")?;
 
-/// graph should be a DAG so a bfs should finish eventually even without visited
-/// keep visited count for each vertex
-fn find_all_paths(
-    adj_list: &HashMap<String, Vec<String>>,
-) -> Result<u64, Box<dyn std::error::Error>> {
-    let mut queue: VecDeque<String> = VecDeque::new();
-    queue.push_back("svr".to_string());
-
-    let visited_counts = visited_counts(&adj_list, &mut queue);
-
-    let result = visited_counts.get("out").ok_or("Out unreachable")?;
-
-    Ok(*result)
-}
-
-/// first part
-///
-/// treating srv and dac as you and out run the first part -> how many paths reach dac from srv
-/// treating srv and fft as you and out run the first part -> how many paths reach fft from srv
-///
-/// using the visited number from before and resetting everything else, run the first part now
-/// from dac to fft
-/// from fft to dac
-///
-/// reset everything again and run the first part from fft to out and dac to out
-fn find_all_dac_fft_paths(
-    adj_list: &HashMap<String, Vec<String>>,
-) -> Result<u64, Box<dyn std::error::Error>> {
-    let mut queue: VecDeque<String> = VecDeque::new();
-    queue.push_back("svr".to_string());
-
-    let vc = visited_counts(adj_list, &mut queue);
-
-    let result = vc.get("out").ok_or("Out unreachable")?;
-
-    // let srv_to_fft = match vc.get("fft") {
-    //     Some(v) => *v,
-    //     None => 0,
-    // };
-    // let srv_to_dac = match vc.get("dac") {
-    //     Some(v) => *v,
-    //     None => 0,
-    // };
-    //
-    // println!("srv_to_fft: {srv_to_fft}");
-    // println!("srv_to_dac: {srv_to_dac}");
-    //
-    // queue = VecDeque::new();
-    // queue.push_back("fft".to_string());
-    // let vc = visited_counts(adj_list, &mut queue);
-    // let fft_to_dac = match vc.get("dac") {
-    //     Some(v) => *v,
-    //     None => 0,
-    // };
-    //
-    // println!("fft_to_dac: {fft_to_dac}");
-    // let fft_to_out = match vc.get("out") {
-    //     Some(v) => *v,
-    //     None => 0,
-    // };
-    //
-    // queue = VecDeque::new();
-    // queue.push_back("dac".to_string());
-    // let vc = visited_counts(adj_list, &mut queue);
-    // let dac_to_fft = match vc.get("fft") {
-    //     Some(v) => *v,
-    //     None => 0,
-    // };
-    //
-    // println!("dac_to_fft: {dac_to_fft}");
-    // let dac_to_out = match vc.get("out") {
-    //     Some(v) => *v,
-    //     None => 0,
-    // };
-    // println!("fft_to_out: {fft_to_out}");
-    // println!("dac_to_out: {dac_to_out}");
-    //
-    // let mut out = 0;
-    // if srv_to_dac != 0 && dac_to_fft != 0 && fft_to_out != 0 {
-    //     out += fft_to_out;
-    // }
-    // if srv_to_fft != 0 && fft_to_dac != 0 && dac_to_out != 0 {
-    //     out += dac_to_out;
-    // }
-    //
-    // Ok(out)
     Ok(*result)
 }
 
@@ -145,7 +107,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         adj_list.insert(vertex.to_string(), to_vertices);
     }
 
-    let result = find_all_paths(&adj_list)?;
+    let stack = vec!["start".to_string()];
+    let result = part1(&adj_list)?;
     println!("PART 1: {result}");
 
     // let result = find_all_dac_fft_paths(&adj_list)?;
