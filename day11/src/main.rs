@@ -1,5 +1,3 @@
-/// [x] parse in the input into a graph
-/// [ ] get topological ordering of the graph
 use clap::Parser;
 use std::{
     collections::{HashMap, HashSet},
