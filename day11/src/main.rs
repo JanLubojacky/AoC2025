@@ -53,16 +53,6 @@ fn topo_dfs_helper(
     topo.push(vertex.to_string());
 }
 
-// fn visited_counts(
-//     adj_list: &HashMap<String, Vec<String>>,
-//     queue: &mut VecDeque<String>,
-// ) -> HashMap<String, u64> {
-//     // 1. topological ordering
-//     let topo =
-//
-//     // 2. process vertices in topological order
-// }
-
 /// graph should be a DAG so a bfs should finish eventually even without visited
 /// keep visited count for each vertex
 fn part1(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::error::Error>> {
@@ -73,9 +63,14 @@ fn part1(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::er
     visited_counts.insert("you".to_string(), 1);
 
     for v in topo {
+        println!("topo: {v}");
+        let current_visits = *visited_counts
+            .get(&v)
+            .expect("v has not been seen yet, topological ordering is wrong");
+
         if let Some(neighbours) = adj_list.get(&v) {
             for n in neighbours {
-                *visited_counts.entry(n.to_string()).or_insert(0) += 1;
+                *visited_counts.entry(n.to_string()).or_insert(0) += current_visits;
             }
         }
     }
