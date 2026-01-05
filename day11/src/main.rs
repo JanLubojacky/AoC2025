@@ -2,7 +2,7 @@
 /// [ ] get topological ordering of the graph
 use clap::Parser;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, HashSet},
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -53,17 +53,17 @@ fn topo_dfs_helper(
     topo.push(vertex.to_string());
 }
 
-/// graph should be a DAG so a bfs should finish eventually even without visited
-/// keep visited count for each vertex
-fn part1(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::error::Error>> {
-    let queue = vec!["you".to_string()];
-
+fn visited_counts(
+    adj_list: &HashMap<String, Vec<String>>,
+    queue: &[String],
+) -> HashMap<String, u64> {
     let topo = topological_ordering(adj_list, &queue);
     let mut visited_counts: HashMap<String, u64> = HashMap::new();
-    visited_counts.insert("you".to_string(), 1);
+    for v in queue {
+        visited_counts.insert(v.to_string(), 1);
+    }
 
     for v in topo {
-        println!("topo: {v}");
         let current_visits = *visited_counts
             .get(&v)
             .expect("v has not been seen yet, topological ordering is wrong");
@@ -75,9 +75,49 @@ fn part1(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::er
         }
     }
 
-    let result = visited_counts.get("out").ok_or("out unreachable")?;
+    visited_counts
+}
+
+/// graph should be a DAG so a bfs should finish eventually even without visited
+/// keep visited count for each vertex
+fn part1(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::error::Error>> {
+    let queue = vec!["you".to_string()];
+
+    let vc = visited_counts(adj_list, &queue);
+
+    let result = vc.get("out").ok_or("out unreachable")?;
 
     Ok(*result)
+}
+
+fn part2(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::error::Error>> {
+    // from svr
+    let queue = vec!["svr".to_string()];
+    let vc_start = visited_counts(adj_list, &queue);
+    let svr2dac = vc_start.get("dac");
+    let svr2fft = vc_start.get("fft");
+
+    // from dac
+    let queue = vec!["dac".to_string()];
+    let vc_dac = visited_counts(adj_list, &queue);
+    let dac2fft = vc_dac.get("fft");
+    let dac2out = vc_dac.get("out");
+
+    // from fft
+    let queue = vec!["fft".to_string()];
+    let vc_fft = visited_counts(adj_list, &queue);
+    let fft2dac = vc_fft.get("dac");
+    let fft2out = vc_fft.get("out");
+
+    let mut result = 0;
+    if let (Some(svr2dac), Some(dac2fft), Some(fft2out)) = (svr2dac, dac2fft, fft2out) {
+        result += svr2dac * dac2fft * fft2out;
+    }
+    if let (Some(svr2fft), Some(fft2dac), Some(dac2out)) = (svr2fft, fft2dac, dac2out) {
+        result += svr2fft * fft2dac * dac2out;
+    }
+
+    Ok(result)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -102,12 +142,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         adj_list.insert(vertex.to_string(), to_vertices);
     }
 
-    let stack = vec!["start".to_string()];
     let result = part1(&adj_list)?;
     println!("PART 1: {result}");
 
-    // let result = find_all_dac_fft_paths(&adj_list)?;
-    // println!("PART 2: {result}");
+    let result = part2(&adj_list)?;
+    println!("PART 2: {result}");
 
     Ok(())
 }
