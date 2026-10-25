@@ -25,7 +25,7 @@ fn topological_ordering(
     let mut topo: Vec<String> = Vec::new();
 
     for start_vertex in starting_vertices {
-        topo_dfs_helper(start_vertex, &adj_list, &mut visited, &mut topo);
+        topo_dfs_helper(start_vertex, adj_list, &mut visited, &mut topo);
     }
 
     topo.reverse();
@@ -53,11 +53,11 @@ fn topo_dfs_helper(
 
 fn visited_counts(
     adj_list: &HashMap<String, Vec<String>>,
-    queue: &[String],
+    starting_vertices: &[String],
 ) -> HashMap<String, u64> {
-    let topo = topological_ordering(adj_list, &queue);
+    let topo = topological_ordering(adj_list, &starting_vertices);
     let mut visited_counts: HashMap<String, u64> = HashMap::new();
-    for v in queue {
+    for v in starting_vertices {
         visited_counts.insert(v.to_string(), 1);
     }
 
@@ -79,9 +79,9 @@ fn visited_counts(
 /// graph should be a DAG so a bfs should finish eventually even without visited
 /// keep visited count for each vertex
 fn part1(adj_list: &HashMap<String, Vec<String>>) -> Result<u64, Box<dyn std::error::Error>> {
-    let queue = vec!["you".to_string()];
+    let starting_vertices = vec!["you".to_string()];
 
-    let vc = visited_counts(adj_list, &queue);
+    let vc = visited_counts(adj_list, &starting_vertices);
 
     let result = vc.get("out").ok_or("out unreachable")?;
 
